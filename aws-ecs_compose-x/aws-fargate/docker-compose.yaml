@@ -1,0 +1,63 @@
+---
+# Override configuration for deployment to ECS On external instances which might be on-premise.
+
+version: "3.8"
+services:
+  conduktor-platform:
+    image: conduktor/conduktor-platform:latest
+    ports:
+      - 8080:80
+    volumes:
+      - conduktor_data:/var/conduktor
+      - conduktor_config:/etc/conduktor
+    environment:
+      CDK_IN_CONF_FILE: /etc/conduktor/config.yaml
+      RUN_MODE: small
+    deploy:
+      labels:
+        ecs.task.family: conduktor-platform
+      resources:
+        reservations:
+          cpus: 2.0
+          memory: 4GB
+        limits:
+          memory: 16GB
+    x-ecs:
+      CapacityProviderStrategy:
+        - CapacityProvider: FARGATE_SPOT
+          Base: 1
+          Weight: 1
+    depends_on:
+      - conduktor-platform-config
+
+  conduktor-platform-config:
+    image: public.ecr.aws/aws-ecs_compose-x/ecs-files-composer
+    deploy:
+      labels:
+        ecs.task.family: conduktor-platform
+        ecs.depends.condition: SUCCESS
+    secrets:
+      - LICENSE_KEY
+      - ADMIN_ACCESS
+
+# Secrets pointing to the secrets stored in AWS Secrets Manager
+
+secrets:
+  LICENSE_KEY:
+    x-secrets:
+      Name: /conduktor/${ORG_NAME}/license
+      VarName: CONDUKTOR_LICENSE_ARN
+
+  ADMIN_ACCESS:
+    x-secrets:
+      Name: /conduktor/${ORG_NAME}/admin
+      VarName: ADMIN_ACCESS_ARN
+      JsonKeys:
+        - SecretKey: ADMIN_EMAIL
+        - SecretKey: ADMIN_PSW
+
+# Docker volumes always needed.
+
+volumes:
+  conduktor_data: {}
+  conduktor_config: {}

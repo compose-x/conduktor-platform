@@ -1,0 +1,83 @@
+---
+# Override file to deploy to a public subnet, directly addressed over the internet.
+
+version: "3.8"
+services:
+  conduktor-ssl:
+    image: public.ecr.aws/nginx/nginx:stable
+    depends_on:
+      - conduktor-platform
+      - conduktor-platform-config
+    ports:
+      - "443/tcp"
+    deploy:
+      labels:
+        ecs.task.family: conduktor-platform
+      resources:
+        reservations:
+          cpus: 0.5
+          memory: 128M
+    volumes:
+      - nginx_config:/etc/nginx/conf.d:ro
+      - nginx_ssl:/etc/nginx/ssl:ro
+
+  conduktor-platform-config:
+    volumes:
+      - nginx_config:/etc/nginx/conf.d:rw
+      - nginx_ssl:/etc/nginx/ssl:rw
+      - conduktor_config:/etc/conduktor:rw
+    command:
+      - --from-ssm
+      - x-ssm_parameter::conduktor-config-bootstrap::ParameterName
+      - --decode-base64
+    secrets:
+      - CONFLUENT_CLUSTER_01
+
+networks:
+  public:
+    x-vpc: PublicSubnets
+
+volumes:
+  nginx_config: {}
+  nginx_ssl: {}
+
+secrets:
+  CONFLUENT_CLUSTER_01:
+    x-secrets:
+      Name: /kafka/eu-west-1/lkc-jjx7m/conduktor-platform # Change secret name to the one created with confluent_credentials.template
+      VarName: CONFLUENT_CLUSTER_01_ARN
+      JsonKeys:
+        - SecretKey: BOOTSTRAP_SERVERS
+        - SecretKey: SCHEMA_REGISTRY_URL
+        - SecretKey: SCHEMA_REGISTRY_USERNAME
+        - SecretKey: SCHEMA_REGISTRY_PASSWORD
+        - SecretKey: SPRING_KAFKA_PROPERTIES_SASL_JAAS_CONFIG
+          VarName: SASL_JAAS_CONFIG
+
+
+# Compose-X AWS extensions
+
+# See https://docs.compose-x.io/syntax/compose_x/ssm_parameter.html for more details
+x-ssm_parameter:
+  conduktor-config-bootstrap: # Configuration file stored to AWS SSM to initialize Conduktor & NGINX
+    MacroParameters:
+      EncodeToBase64: true
+      FromFile: conduktor_config.yaml
+    Properties:
+      Type: String
+    Services:
+      conduktor-platform:
+        Access: RO
+
+# See https://docs.compose-x.io/syntax/compose_x/vpc.html for more details
+x-vpc: # Create a new VPC for testing.
+  Properties:
+    DisableNat: true
+    Endpoints: {}
+
+# Uncomment below to use existing cluster.
+# See https://docs.compose-x.io/syntax/compose_x/ecs_cluster.html for more details
+
+#x-cluster:
+#  Lookup:
+#    ClusterName: ${ECS_CLUSTER_NAME:-default}

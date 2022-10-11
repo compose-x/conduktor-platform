@@ -1,0 +1,80 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Template to create Conduktor admin details
+
+Parameters:
+
+  OrganizationName:
+    Type: String
+    Default: demo
+
+  ConduktorLicense:
+    Type: String
+    NoEcho: True
+
+  PlatformAdminEmail:
+    Type: String
+
+  PlatformAdminPassword:
+    Type: String
+    NoEcho: True
+
+  SSOClientId:
+    Type: String
+    Default: none
+
+  SSOClientSecret:
+    Type: String
+    Default: none
+    NoEcho: True
+
+Conditions:
+  CreateSSOSecret: !And
+    - !Not [!Equals [!Ref SSOClientId, "none"]]
+    - !Not [!Equals [!Ref SSOClientSecret, "none"]]
+
+Resources:
+  ConduktorLicenseSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Sub '/conduktor/${OrganizationName}/license'
+      Description: !Sub "${OrganizationName} Conduktor Admin license"
+      SecretString: !Ref ConduktorLicense
+      Tags:
+        - Key: Name
+          Value: ConduktorLicense
+
+  ConduktorAdminLogin:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Sub "conduktor-${OrganizationName}-admin-login"
+      Name: !Sub '/conduktor/${OrganizationName}/admin'
+      Description: "Conduktor Admin login credentials"
+      SecretString: !Sub |
+        {
+          "ADMIN_EMAIL": "${PlatformAdminEmail}",
+          "ADMIN_PSW": "${PlatformAdminPassword}"
+        }
+
+  ConduktorSsoDetails:
+    Condition: CreateSSOSecret
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Sub "conduktor-admin-login"
+      Name: !Sub '/conduktor/${OrganizationName}/sso'
+      Description: !Sub "${OrganizationName} - Conduktor SSO Client secrets"
+      SecretString: !Sub |
+        {
+          "CLIENT_ID": "${SSOClientId}",
+          "CLIENT_SECRET": "${SSOClientSecret}"
+        }
+
+Outputs:
+  LicenseSecret:
+    Value: !Ref ConduktorLicenseSecret
+
+  PlatformAdminLogin:
+    Value: !Ref ConduktorAdminLogin
