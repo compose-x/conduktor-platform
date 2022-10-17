@@ -99,7 +99,7 @@ x-elbv2:
       Type: application
 
     Services: # Here our target is the NGINX container
-      - healthcheck: 443:HTTPS:5:2:15:5:/admin/login:200,302
+      - healthcheck: 443:HTTPS:5:2:15:5:/platform/api/modules/health/live:200
         name: conduktor-platform:conduktor-ssl
         port: 443
         protocol: HTTPS
@@ -115,6 +115,7 @@ x-ssm_parameter:
       FromFile: conduktor_config.yaml
     Properties:
       Type: String
+      Tier: Intelligent-Tiering
     Services:
       conduktor-platform:
         Access: RO

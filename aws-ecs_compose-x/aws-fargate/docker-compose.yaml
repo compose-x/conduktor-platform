@@ -22,6 +22,12 @@ services:
           memory: 4GB
         limits:
           memory: 16GB
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sq --fail http://localhost/platform/api/modules/health/live"]
+      interval: 30s
+      start_period: 120s # Leave time for the psql init scripts to run
+      timeout: 5s
+      retries: 3
     x-ecs:
       CapacityProviderStrategy:
         - CapacityProvider: FARGATE_SPOT
@@ -31,7 +37,7 @@ services:
       - conduktor-platform-config
 
   conduktor-platform-config:
-    image: public.ecr.aws/aws-ecs_compose-x/ecs-files-composer
+    image: public.ecr.aws/compose-x/ecs-files-composer
     deploy:
       labels:
         ecs.task.family: conduktor-platform

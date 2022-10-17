@@ -3,40 +3,46 @@ files:
   /etc/conduktor/config.yaml:
     mode: 644
     content: |
-      ---
-      # Conduktor configuration can interpolate env vars values natively.
       organization:
-        name: ${ORG_NAME}
+        name: {{ env_var('ORG_NAME') | safe }}
 
       clusters:
         - id: confluent-pkc
           name: Confluent
           color: "#E70000"
           ignoreUntrustedCertificate: false
-          bootstrapServers: ${PROD_BOOTSTRAP_SERVERS}
+          bootstrapServers: {{ env_var('PROD_BOOTSTRAP_SERVERS') | safe }}
           properties: |
             client.id=conduktor
             default.api.timeout.ms=5000
             request.timeout.ms=5000
             security.protocol=SASL_SSL
             sasl.mechanism=PLAIN
-            sasl.jaas.config=${PROD_SASL_JAAS_CONFIG}
+            sasl.jaas.config={{ env_var('PROD_SASL_JAAS_CONFIG') | safe }}
           schemaRegistry:
             id: confluent-sr
-            url: ${PROD_SCHEMA_REGISTRY_URL}
+            url: {{ env_var('PROD_SCHEMA_REGISTRY_URL') | safe }}
             ignoreUntrustedCertificate: false
             security:
-              username: ${PROD_SCHEMA_REGISTRY_USERNAME}
-              password: ${PROD_SCHEMA_REGISTRY_PASSWORD}
+              username: {{ env_var('PROD_SCHEMA_REGISTRY_USERNAME') | safe }}
+              password: {{ env_var('PROD_SCHEMA_REGISTRY_PASSWORD') | safe }}
           labels: {}
 
-      license: ${LICENSE_KEY}
+      license: {{ env_var('LICENSE_KEY') | safe }}
       auth:
         demo-users:
-          - email: ${ADMIN_EMAIL}
-            password: ${ADMIN_PSW}
+          - email: {{ env_var('ADMIN_EMAIL') | safe }}
+            password: {{ env_var('ADMIN_PSW') | safe }}
             groups:
               - ADMIN
+#      sso:
+#        oauth2:
+#          - name: "azure"
+#            default: true
+#            client-id: {{ env_var('AZURE_CLIENT_ID') | safe }}
+#            client-secret: {{ env_var('AZURE_CLIENT_SECRET') | safe }}
+#            openid:
+#              issuer: https://login.microsoftonline.com/{{ env_var('TENANT_ID') | safe }}/v2.0
 
 
   /etc/nginx/conf.d/001.conf:
